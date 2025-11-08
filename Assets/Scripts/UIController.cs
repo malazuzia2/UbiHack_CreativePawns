@@ -27,9 +27,9 @@ public class UIController : MonoBehaviour
     [Tooltip("Poniżej tej wartości BPM, serce będzie w kolorze 'wysokiego tętna'.")]
     [SerializeField] private float highBpmThreshold = 125f;
     [Space]
-    [SerializeField] private Color calmColor = Color.blue;
-    [SerializeField] private Color alertColor = Color.green;
-    [SerializeField] private Color highColor = new Color(1.0f, 0.5f, 0.0f); // Orange
+    [SerializeField] private Color calmColor = new Color(0.08235296f, 0.227953f, 0.8039216f);
+    [SerializeField] private Color alertColor = new Color(0f, 1f, 0.6946125f);
+    [SerializeField] private Color highColor = new Color(1f, 0f, 0.3369489f); // Orange #FF0056
     [SerializeField] private Color veryHighColor = Color.red;
     [Space]
     [Tooltip("Jak płynnie serce ma zmieniać kolor.")]
