@@ -105,9 +105,6 @@ public class PlaybackController : MonoBehaviour
                         // Jesteœmy dok³adnie na granicy sekundy, wiêc dodajemy czas do licznika
                         switch (data.label)
                         {
-                            case 1: // Neutralny
-                                relaxationTime++;
-                                break;
                             case 2: // Stres
                                 stressTime++;
                                 break;

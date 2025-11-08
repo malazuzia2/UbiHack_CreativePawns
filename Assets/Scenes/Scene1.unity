@@ -2327,7 +2327,10 @@ MonoBehaviour:
   activeSubjectId: 13
   speed: 1
   llmUpdateInterval: 30
-  chunkSizeInSeconds: 5
+  chunkSizeInSeconds: 10
+  stressTime: 0
+  amusementTime: 0
+  relaxationTime: 0
 --- !u!4 &1381142347
 Transform:
   m_ObjectHideFlags: 0
