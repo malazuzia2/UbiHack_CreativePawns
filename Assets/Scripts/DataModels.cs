@@ -3,6 +3,7 @@ using TMPro;
 // U¿ywamy przestrzeni nazw z biblioteki do³¹czonej do Visual Scripting
 using Unity.VisualScripting.Dependencies.Sqlite;
 using UnityEngine;
+using UnityEngine.UI;
 
 // Klasa-mapa dla tabeli w bazie danych
 [Table("sensor_data")]
@@ -35,6 +36,7 @@ public class UserInterfaceSet
     public TextMeshProUGUI EdaText;
     public TextMeshProUGUI TempText;
     public TextMeshProUGUI RespText;
+    public RectTransform breathVisual;
     [Header("LLM Output")]
     public TextMeshProUGUI LlmResponseText;
 }
