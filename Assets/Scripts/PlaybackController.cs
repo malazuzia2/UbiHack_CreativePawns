@@ -12,7 +12,11 @@ public class PlaybackController : MonoBehaviour
     [SerializeField] private UIController uiController;
     [SerializeField] private GameObject info;
 
-    // ... (reszta zale¿noœci)
+    [Header("Sliding Window Statistics")]
+    [Tooltip("D³ugoœæ okna czasowego (w sekundach), z którego liczone s¹ statystyki.")]
+    [SerializeField] private int statsWindowInSeconds = 1200; // 1200 sekund = 20 minut
+    private Queue<int> labelHistory = new Queue<int>(); // Kolejka przechowuj¹ca etykiety z ostatniego okna
+    private int[] labelCounts = new int[8]; // Tablica do zliczania wyst¹pieñ ka¿dej etykiety (0-7)
 
     [Header("Ustawienia Odtwarzania")]
     public int activeSubjectId = 13;
@@ -144,27 +148,25 @@ public class PlaybackController : MonoBehaviour
         beatTimestamps.Clear();
         currentBPM = 0f;
 
-        // --- REKONSTRUKCJA STANU LICZNIKÓW ---
-        // To jest kluczowy moment: prosimy DataManager o dane do momentu skoku,
-        // aby przeliczyæ statystyki od zera.
-        List<SensorData> historyChunk = dataManager.GetDataChunk(currentlyPlayingSubjectId, 0, newOffset);
-        stressTime = 0;
-        amusementTime = 0;
-        relaxationTime = 0;
+        labelHistory.Clear();
+        System.Array.Clear(labelCounts, 0, labelCounts.Length);
 
-        for (int i = 0; i < historyChunk.Count; i++)
+        int historyStartOffset = Mathf.Max(0, newOffset - (statsWindowInSeconds * DATA_SAMPLING_RATE));
+        int historySize = newOffset - historyStartOffset;
+
+        Debug.Log($"Rekonstruujê statystyki z {historySize} próbek...");
+
+        // U¿yj nowej, super szybkiej funkcji, aby pobraæ TYLKO etykiety
+        List<int> labelHistoryChunk = dataManager.GetLabelHistoryChunk(currentlyPlayingSubjectId, historyStartOffset, historySize);
+
+        foreach (var label in labelHistoryChunk)
         {
-            if (i > 0 && i % DATA_SAMPLING_RATE == 0)
-            {
-                switch (historyChunk[i].label)
-                {
-                    case 2: stressTime++; break;
-                    case 3: amusementTime++; break;
-                    case 4: relaxationTime++; break;
-                }
-            }
+            labelHistory.Enqueue(label);
+            labelCounts[label]++;
         }
-        // -----------------------------------------
+
+        Debug.Log("Rekonstrukcja statystyk zakoñczona.");
+        // --------------------------------------------------------
 
         uiController.ResetUI();
         playbackCoroutine = StartCoroutine(PlaybackDataRoutine());
@@ -192,13 +194,8 @@ public class PlaybackController : MonoBehaviour
 
         while (!isDataFinished)
         {
-            if (speed <= 0f)
-            {
-                yield return null;
-                continue;
-            }
+            if (speed <= 0f) { yield return null; continue; }
 
-            // --- NOWA LOGIKA PETLI ---
             sampleDebt += Time.deltaTime * DATA_SAMPLING_RATE * speed;
             int samplesToProcess = Mathf.FloorToInt(sampleDebt);
 
@@ -208,65 +205,47 @@ public class PlaybackController : MonoBehaviour
 
                 for (int i = 0; i < samplesToProcess; i++)
                 {
-                    // 1. SprawdŸ, czy potrzebujemy nowej paczki danych
                     if (chunkIndex >= currentChunk.Count)
                     {
-                        Debug.Log("Pobieram now¹ paczkê danych z bazy...");
                         currentChunk = dataManager.GetDataChunk(currentlyPlayingSubjectId, totalOffset, chunkSizeInSeconds * DATA_SAMPLING_RATE);
-                        chunkIndex = 0; // Zresetuj indeks w paczce
-
-                        // Jeœli nowa paczka jest pusta, to koniec danych
-                        if (currentChunk.Count == 0)
-                        {
-                            isDataFinished = true;
-                            break;
-                        }
+                        chunkIndex = 0;
+                        if (currentChunk.Count == 0) { isDataFinished = true; break; }
                     }
 
-                    // 2. Pobierz dane z szybkiej listy w pamiêci RAM
                     SensorData data = currentChunk[chunkIndex];
 
                     CalculateBPM(data.ecg, totalOffset);
 
+                    // --- NOWA LOGIKA AKTUALIZACJI STATYSTYK ---
+                    // 1. Dodaj now¹ etykietê do historii
+                    labelHistory.Enqueue(data.label);
+                    labelCounts[data.label]++;
 
-                    if (totalOffset > 0 && totalOffset % DATA_SAMPLING_RATE == 0)
+                    // 2. Jeœli historia jest za d³uga, usuñ najstarsz¹ etykietê
+                    if (labelHistory.Count > statsWindowInSeconds * DATA_SAMPLING_RATE)
                     {
-                        // Jesteœmy dok³adnie na granicy sekundy, wiêc dodajemy czas do licznika
-                        switch (data.label)
-                        {
-                            case 2: // Stres
-                                stressTime++;
-                                break;
-                            case 3: // Radoœæ
-                                amusementTime++;
-                                break;
-                            case 4: // Relaks
-                                relaxationTime++;
-                                break;
-                        }
+                        int oldestLabel = labelHistory.Dequeue();
+                        labelCounts[oldestLabel]--;
                     }
+                    // ------------------------------------------
 
-
-                    // 3. Zaktualizuj UI (tylko w ostatnim obiegu pêtli dla wydajnoœci)
                     if (i == samplesToProcess - 1)
                     {
-                        // Przeka¿ aktualne liczniki czasu do UIControllera
-                        uiController.UpdateUI(data, totalOffset, DATA_SAMPLING_RATE, stressTime, amusementTime, relaxationTime, data.resp, currentBPM);
+                        // Przelicz zliczenia na sekundy i przeka¿ do UI
+                        float stress = (float)labelCounts[2] / DATA_SAMPLING_RATE;
+                        float amusement = (float)labelCounts[3] / DATA_SAMPLING_RATE;
+                        float relaxation = (float)labelCounts[4] / DATA_SAMPLING_RATE;
+
+                        uiController.UpdateUI(data, totalOffset, DATA_SAMPLING_RATE, stress, amusement, relaxation, data.resp, currentBPM);
                     }
 
                     _lastDataSample = data;
-
-
                     chunkIndex++;
                     totalOffset++;
                 }
             }
 
-            if (isDataFinished)
-            {
-                uiController.SetFinished();
-                break;
-            }
+            if (isDataFinished) { uiController.SetFinished(); break; }
 
             yield return null;
         }

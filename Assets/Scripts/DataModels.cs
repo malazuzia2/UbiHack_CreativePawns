@@ -1,10 +1,9 @@
 using TMPro;
 
 // U¿ywamy przestrzeni nazw z biblioteki do³¹czonej do Visual Scripting
-using Unity.VisualScripting.Dependencies.Sqlite;
 using UnityEngine;
 using UnityEngine.UI;
-
+using SQLite4Unity3d;
 // Klasa-mapa dla tabeli w bazie danych
 [Table("sensor_data")]
 public class SensorData

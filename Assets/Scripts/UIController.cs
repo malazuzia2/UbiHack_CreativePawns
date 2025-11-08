@@ -19,6 +19,23 @@ public class UIController : MonoBehaviour
     [Tooltip("Jak płynnie materiał ma reagować na zmiany oddechu.")]
     [SerializeField] private float breathSmoothing = 5f;
 
+    [Header("Heart Visual Settings")]
+    [Tooltip("Poniżej tej wartości BPM, serce będzie w kolorze 'spokoju'.")]
+    [SerializeField] private float calmBpmThreshold = 75f;
+    [Tooltip("Poniżej tej wartości BPM, serce będzie w kolorze 'lekkiego pobudzenia'.")]
+    [SerializeField] private float alertBpmThreshold = 100f;
+    [Tooltip("Poniżej tej wartości BPM, serce będzie w kolorze 'wysokiego tętna'.")]
+    [SerializeField] private float highBpmThreshold = 125f;
+    [Space]
+    [SerializeField] private Color calmColor = Color.blue;
+    [SerializeField] private Color alertColor = Color.green;
+    [SerializeField] private Color highColor = new Color(1.0f, 0.5f, 0.0f); // Orange
+    [SerializeField] private Color veryHighColor = Color.red;
+    [Space]
+    [Tooltip("Jak płynnie serce ma zmieniać kolor.")]
+    [SerializeField] private float colorSmoothing = 2.0f;
+
+
 
     [Header("Accelerometer Visual Settings")]
     [SerializeField] private float accelerometerSmoothing = 10f;
@@ -32,6 +49,7 @@ public class UIController : MonoBehaviour
     private float currentBPM = 0f;
     private Material _heartMaterialInstance;
     private static readonly int DarknessID = Shader.PropertyToID("_Darkness");
+    private static readonly int ColorHeartID = Shader.PropertyToID("_ColorHeart"); // <<< NOWA ZMIENNA
 
     [Header("Performance Settings")]
     [Tooltip("Jak często (w sekundach) aktualizować pola tekstowe. 0.1 = 10 razy na sekundę.")]
@@ -109,24 +127,44 @@ public class UIController : MonoBehaviour
 
     private void UpdateHeartVisual()
     {
-        if (_heartMaterialInstance == null || currentBPM <= 0) return;
+        if (_heartMaterialInstance == null) return;
 
-        // KROK 1: Przelicz BPM na częstotliwość (Hz).
-        // 60 BPM = 1 uderzenie na sekundę = 1 Hz.
-        float frequency = currentBPM / 60.0f;
+        // --- Część 1: Pulsowanie (bez zmian) ---
+        if (currentBPM > 0)
+        {
+            float frequency = currentBPM / 60.0f;
+            float sinValue = Mathf.Sin(Time.time * frequency * Mathf.PI * 2);
+            float targetDarkness = ((sinValue + 1.0f) / 2.0f) * 3.0f;
+            _heartMaterialInstance.SetFloat(DarknessID, targetDarkness);
+        }
 
-        // KROK 2: Użyj funkcji sinus z upływającym czasem, aby stworzyć oscylację.
-        // Mnożymy czas przez częstotliwość, aby kontrolować prędkość pulsowania.
-        // Wynik funkcji Sin jest w zakresie od -1 do 1.
-        float sinValue = Mathf.Sin(Time.time * frequency * Mathf.PI * 2);
+        // --- Część 2: Zmiana Koloru (NOWA LOGIKA) ---
 
-        // KROK 3: Zmapuj wynik z zakresu [-1, 1] do pożądanego zakresu [0, 3].
-        // Najpierw mapujemy z [-1, 1] do [0, 1] -> (sinValue + 1) / 2
-        // Następnie mnożymy przez 3, aby uzyskać zakres [0, 3].
-        float targetDarkness = ((sinValue + 1.0f) / 2.0f) * 3.0f;
+        // KROK 1: Wybierz docelowy kolor na podstawie aktualnego BPM
+        Color targetColor;
+        if (currentBPM < calmBpmThreshold)
+        {
+            targetColor = calmColor; // Stage 1: Spokój
+        }
+        else if (currentBPM < alertBpmThreshold)
+        {
+            targetColor = alertColor; // Stage 2: Lekkie pobudzenie
+        }
+        else if (currentBPM < highBpmThreshold)
+        {
+            targetColor = highColor; // Stage 3: Wysokie tętno
+        }
+        else
+        {
+            targetColor = veryHighColor; // Stage 4: Bardzo wysokie tętno
+        }
 
-        // KROK 4: Ustaw wartość w shaderze.
-        _heartMaterialInstance.SetFloat(DarknessID, targetDarkness);
+        // KROK 2: Płynnie zmieniaj obecny kolor w kierunku docelowego
+        Color currentColor = _heartMaterialInstance.GetColor(ColorHeartID);
+        Color smoothedColor = Color.Lerp(currentColor, targetColor, Time.deltaTime * colorSmoothing);
+
+        // KROK 3: Ustaw nowy, płynny kolor w shaderze
+        _heartMaterialInstance.SetColor(ColorHeartID, smoothedColor);
     }
 
 

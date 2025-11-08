@@ -1,13 +1,20 @@
 // W pliku DataManager.cs
 using UnityEngine;
 using System.IO;
-using Unity.VisualScripting.Dependencies.Sqlite;
+using SQLite4Unity3d;
 using System.Collections.Generic; // Potrzebne do List<T>
 using System.Linq; // Potrzebne do .ToList()
+using SQLite4Unity3d;
 
 public class DataManager : MonoBehaviour
 {
     private SQLiteConnection dbConnection;
+
+    [Table("sensor_data")]
+    public class LabelOnlyData
+    {
+        public int label { get; set; }
+    }
 
     void Awake()
     {
@@ -39,7 +46,17 @@ public class DataManager : MonoBehaviour
                            .ToList();
     }
     // ------------------------------------
+    public List<int> GetLabelHistoryChunk(int subjectId, int offset, int chunkSize)
+    {
+        // Tworzymy surowe zapytanie SQL.
+        string sql = $"SELECT label FROM sensor_data WHERE subject_id = ? ORDER BY rowid LIMIT ? OFFSET ?";
 
+        // U¿yj standardowej funkcji Query, mapuj¹c wynik na nasz¹ now¹, lekk¹ klasê.
+        List<LabelOnlyData> resultObjects = dbConnection.Query<LabelOnlyData>(sql, subjectId, chunkSize, offset);
+
+        // Przekonwertuj listê obiektów na prost¹ listê liczb ca³kowitych (int).
+        return resultObjects.Select(item => item.label).ToList();
+    }
     void OnDestroy()
     {
         if (dbConnection != null)
