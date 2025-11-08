@@ -70,8 +70,8 @@ public class UIController : MonoBehaviour
     private void UpdateStressBall(float stress, float amusement, float relaxation)
     {
         float all = stress + amusement + relaxation;
+        if(all == 0) all = 1;
         myMaterial.GetComponent<MeshRenderer>().material.SetFloat("StressCount", stress/all);
-        Debug.Log("Stress: " + stress/all);
         myMaterial.GetComponent<MeshRenderer>().material.SetFloat("HappyCount", amusement/all);
     }
 

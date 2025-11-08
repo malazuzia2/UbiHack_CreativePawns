@@ -21,9 +21,9 @@ public class PlaybackController : MonoBehaviour
     private int chunkIndex = 0;
 
     // --- NOWE ZMIENNE DO ZLICZANIA CZASU (w sekundach) ---
-    private float stressTime = 0f;
-    private float amusementTime = 0f;
-    private float relaxationTime = 0f;
+    public float stressTime = 0f;
+    public float amusementTime = 0f;
+    public float relaxationTime = 0f;
     // ---------------------------------------------------
 
     private int totalOffset = 0;
@@ -54,11 +54,6 @@ public class PlaybackController : MonoBehaviour
         llmUpdateTimer = 0;
         sampleDebt = 0;
 
-        // --- RESETOWANIE LICZNIKÓW CZASU ---
-        stressTime = 0f;
-        amusementTime = 0f;
-        relaxationTime = 0f;
-        // ------------------------------------
 
         uiController.ResetUI();
         playbackCoroutine = StartCoroutine(PlaybackDataRoutine());
