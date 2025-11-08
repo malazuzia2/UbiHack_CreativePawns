@@ -79,8 +79,11 @@ public class UIController : MonoBehaviour
         float totalSeconds = (float)currentOffset / samplingRate;
         string timeString = string.Format("{0:00}:{1:00}", (int)totalSeconds / 60, (int)totalSeconds % 60);
 
-        uiSet.TimeText.text = $"Czas: {timeString}";
-        uiSet.SubjectID.text = $"ID Uczestnika: {data.subject_id}";
+        if (!uiSet.TimeInputField.isFocused)
+        {
+            uiSet.TimeInputField.text = $"{(int)totalSeconds}";
+        }
+        uiSet.SubjectID.text = $"{data.subject_id}";
         uiSet.LabelText.text = $"Etykieta: {GetLabelName(data.label)}";
         uiSet.EcgText.text = $"EKG: {bpm} BPM";
         uiSet.EmgText.text = $"EMG: {data.emg:F4} mV";
@@ -169,7 +172,7 @@ public class UIController : MonoBehaviour
 
     public void ResetUI()
     {
-        uiSet.TimeText.text = "Czas: 00:00";
+        if (uiSet.TimeInputField != null) uiSet.TimeInputField.text = "0";
         uiSet.LlmResponseText.text = "Oczekiwanie na dane...";
         // Możesz dodać resetowanie pozostałych pól tekstowych, jeśli chcesz
     }
@@ -180,7 +183,7 @@ public class UIController : MonoBehaviour
 
     public void SetFinished()
     {
-        uiSet.TimeText.text = "Koniec nagrania";
+        uiSet.LlmResponseText.text = "Koniec nagrania";
     }
 
     private string GetLabelName(int labelId)

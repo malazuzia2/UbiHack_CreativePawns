@@ -1,8 +1,8 @@
 // W pliku PlaybackController.cs
-using System.Collections;
-using System.Collections.Generic; // Potrzebne do List<T>
-using System.Linq;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 public class PlaybackController : MonoBehaviour
 {
@@ -10,40 +10,38 @@ public class PlaybackController : MonoBehaviour
     [SerializeField] private DataManager dataManager;
     [SerializeField] private LLMService llmService;
     [SerializeField] private UIController uiController;
+    // ... (reszta zale¿noœci)
 
     [Header("Ustawienia Odtwarzania")]
     public int activeSubjectId = 13;
     [Range(0f, 100f)] public float speed = 1f;
-    [SerializeField] private float llmUpdateInterval = 10f;
+    [SerializeField] private int timeJumpInSeconds = 15; // O ile sekund przeskakiwaæ
 
+    // ... (wszystkie inne zmienne: chunk, bpm, liczniki czasu, itd. bez zmian) ...
     [Header("Ustawienia Wydajnoœci")]
     [SerializeField] private int chunkSizeInSeconds = 5;
     private List<SensorData> currentChunk;
     private int chunkIndex = 0;
 
     [Header("BPM Calculation Settings")]
-    [Tooltip("Wartoœæ EKG, powy¿ej której wykrywamy uderzenie serca.")]
     [SerializeField] private float bpmDetectionThreshold = 0.5f;
-    [Tooltip("Ile ostatnich uderzeñ serca uœredniaæ do obliczenia BPM.")]
     [SerializeField] private int bpmAverageCount = 5;
-
-    private bool isAboveThreshold = false; // Czy sygna³ jest aktualnie powy¿ej progu?
-    private List<float> beatTimestamps = new List<float>(); // Przechowuje czasy ostatnich uderzeñ
+    private bool isAboveThreshold = false;
+    private List<float> beatTimestamps = new List<float>();
     private float currentBPM = 0f;
 
-    // --- NOWE ZMIENNE DO ZLICZANIA CZASU (w sekundach) ---
     public float stressTime = 0f;
     public float amusementTime = 0f;
     public float relaxationTime = 0f;
-    // ---------------------------------------------------
 
     private int totalOffset = 0;
     private bool isDataFinished = false;
-    private float llmUpdateTimer = 0f;
+    private SensorData _lastDataSample;
     private Coroutine playbackCoroutine;
     private int currentlyPlayingSubjectId = -1;
     private const int DATA_SAMPLING_RATE = 700;
     private float sampleDebt = 0f;
+    private bool isSeeking = false; // Flaga, aby zatrzymaæ odtwarzanie podczas przeskoku
 
     void Update()
     {
@@ -55,22 +53,107 @@ public class PlaybackController : MonoBehaviour
 
     private void StartPlayback()
     {
+        SeekTo(0); // U¿yj nowej funkcji SeekTo do startowania/resetowania
+    }
+
+    // --- NOWE PUBLICZNE FUNKCJE DLA PRZYCISKÓW ---
+    public void Rewind()
+    {
+        int newOffset = Mathf.Max(0, totalOffset - (timeJumpInSeconds * DATA_SAMPLING_RATE));
+        SeekTo(newOffset);
+    }
+
+    public void Forward()
+    {
+        // Tutaj musimy dodaæ logikê, aby nie przeskoczyæ za daleko, ale na razie uproœæmy
+        int newOffset = totalOffset + (timeJumpInSeconds * DATA_SAMPLING_RATE);
+        SeekTo(newOffset);
+    }
+
+    public void ResetTime()
+    {
+        SeekTo(0);
+    }
+
+    public void OnTimeChanged(string timeString)
+    {
+        // Próbujemy przekonwertowaæ wpisany tekst na liczbê (sekundy)
+        if (int.TryParse(timeString, out int timeInSeconds))
+        {
+            // Przeliczamy sekundy na offset w próbkach
+            int newOffset = timeInSeconds * DATA_SAMPLING_RATE;
+            SeekTo(newOffset);
+        }
+        else
+        {
+            Debug.LogWarning("Wprowadzono nieprawid³owy format czasu.");
+        }
+    }
+
+
+    // ---------------------------------------------
+
+    // --- G£ÓWNA NOWA FUNKCJA DO ZARZ¥DZANIA CZASEM ---
+    private void SeekTo(int newOffset)
+    {
+        if (isSeeking) return; // Zapobiegaj wielokrotnym skokom
+        isSeeking = true;
+
         if (playbackCoroutine != null) StopCoroutine(playbackCoroutine);
 
+        Debug.Log($"Przeskakujê do próbki: {newOffset}...");
+
+        // Zresetuj stan odtwarzania
         currentlyPlayingSubjectId = activeSubjectId;
-        totalOffset = 0;
+        totalOffset = newOffset;
         chunkIndex = 0;
         currentChunk = new List<SensorData>();
         isDataFinished = false;
-        llmUpdateTimer = 0;
         sampleDebt = 0;
         isAboveThreshold = false;
         beatTimestamps.Clear();
         currentBPM = 0f;
 
+        // --- REKONSTRUKCJA STANU LICZNIKÓW ---
+        // To jest kluczowy moment: prosimy DataManager o dane do momentu skoku,
+        // aby przeliczyæ statystyki od zera.
+        List<SensorData> historyChunk = dataManager.GetDataChunk(currentlyPlayingSubjectId, 0, newOffset);
+        stressTime = 0;
+        amusementTime = 0;
+        relaxationTime = 0;
+
+        for (int i = 0; i < historyChunk.Count; i++)
+        {
+            if (i > 0 && i % DATA_SAMPLING_RATE == 0)
+            {
+                switch (historyChunk[i].label)
+                {
+                    case 2: stressTime++; break;
+                    case 3: amusementTime++; break;
+                    case 4: relaxationTime++; break;
+                }
+            }
+        }
+        // -----------------------------------------
 
         uiController.ResetUI();
         playbackCoroutine = StartCoroutine(PlaybackDataRoutine());
+        isSeeking = false;
+    }
+
+
+    public void OnRequestLlmSummary()
+    {
+        if (_lastDataSample != null && llmService != null)
+        {
+            Debug.Log("Wysy³am zapytanie do LLM na ¿¹danie...");
+            llmService.RequestSummary(_lastDataSample, response => uiController.SetLlmResponse(response));
+        }
+        else
+        {
+            Debug.LogWarning("Brak danych do analizy lub brak serwisu LLM.");
+            uiController.SetLlmResponse("Dane nie s¹ jeszcze gotowe do analizy.");
+        }
     }
 
     private IEnumerator PlaybackDataRoutine()
@@ -141,13 +224,8 @@ public class PlaybackController : MonoBehaviour
                         uiController.UpdateUI(data, totalOffset, DATA_SAMPLING_RATE, stressTime, amusementTime, relaxationTime, data.resp, currentBPM);
                     }
 
-                    // 4. Logika LLM
-                    llmUpdateTimer += (1.0f / DATA_SAMPLING_RATE);
-                    if (llmUpdateTimer >= llmUpdateInterval)
-                    {
-                        llmService.RequestSummary(data, response => uiController.SetLlmResponse(response));
-                        llmUpdateTimer = 0f;
-                    }
+                    _lastDataSample = data;
+
 
                     chunkIndex++;
                     totalOffset++;
