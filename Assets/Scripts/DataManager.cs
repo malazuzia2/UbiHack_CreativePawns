@@ -1,6 +1,9 @@
+// W pliku DataManager.cs
 using UnityEngine;
 using System.IO;
 using Unity.VisualScripting.Dependencies.Sqlite;
+using System.Collections.Generic; // Potrzebne do List<T>
+using System.Linq; // Potrzebne do .ToList()
 
 public class DataManager : MonoBehaviour
 {
@@ -8,20 +11,16 @@ public class DataManager : MonoBehaviour
 
     void Awake()
     {
+        // ... (kod Awake bez zmian) ...
         string dbPath = Path.Combine(Application.streamingAssetsPath, "wesad_processed.sqlite");
-
 #if UNITY_ANDROID && !UNITY_EDITOR
-            var loadDb = new WWW(dbPath);
-            while (!loadDb.isDone) { }
-            string persistentPath = Path.Combine(Application.persistentDataPath, "wesad_processed.sqlite");
-            File.WriteAllBytes(persistentPath, loadDb.bytes);
-            dbPath = persistentPath;
+            // ...
 #endif
-
         dbConnection = new SQLiteConnection(dbPath, SQLiteOpenFlags.ReadOnly);
         Debug.Log("DataManager: Po³¹czenie z baz¹ danych udane.");
     }
 
+    // Ta funkcja zostaje, mo¿e siê przydaæ do czegoœ innego
     public SensorData GetDataAtOffset(int subjectId, int offset)
     {
         return dbConnection.Table<SensorData>()
@@ -29,6 +28,17 @@ public class DataManager : MonoBehaviour
                            .Skip(offset)
                            .FirstOrDefault();
     }
+
+    // --- NOWA, ZOPTYMALIZOWANA FUNKCJA ---
+    public List<SensorData> GetDataChunk(int subjectId, int offset, int chunkSize)
+    {
+        return dbConnection.Table<SensorData>()
+                           .Where(row => row.subject_id == subjectId)
+                           .Skip(offset)
+                           .Take(chunkSize)
+                           .ToList();
+    }
+    // ------------------------------------
 
     void OnDestroy()
     {

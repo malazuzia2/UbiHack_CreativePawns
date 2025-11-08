@@ -1,33 +1,74 @@
+// W pliku PlaybackController.cs
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic; // Potrzebne do List<T>
 
 public class PlaybackController : MonoBehaviour
 {
     [Header("Zale¿noœci")]
     [SerializeField] private DataManager dataManager;
     [SerializeField] private LLMService llmService;
-    [SerializeField] private UIController uiControllerS13;
-    [SerializeField] private UIController uiControllerS17;
+    [SerializeField] private UIController uiController;
 
     [Header("Ustawienia Odtwarzania")]
+    public int activeSubjectId = 13;
     [Range(0f, 100f)] public float speed = 1f;
     [SerializeField] private float llmUpdateInterval = 10f;
 
-    private int currentRowOffsetS13 = 0;
-    private int currentRowOffsetS17 = 0;
-    private bool isS13DataFinished = false;
-    private bool isS17DataFinished = false;
-    private float llmUpdateTimer = 0f;
-    private const int DATA_SAMPLING_RATE = 700;
+    [Header("Ustawienia Wydajnoœci")]
+    [SerializeField] private int chunkSizeInSeconds = 5;
+    private List<SensorData> currentChunk;
+    private int chunkIndex = 0;
 
-    void Start()
+    // --- NOWE ZMIENNE DO ZLICZANIA CZASU (w sekundach) ---
+    private float stressTime = 0f;
+    private float amusementTime = 0f;
+    private float relaxationTime = 0f;
+    // ---------------------------------------------------
+
+    private int totalOffset = 0;
+    private bool isDataFinished = false;
+    private float llmUpdateTimer = 0f;
+    private Coroutine playbackCoroutine;
+    private int currentlyPlayingSubjectId = -1;
+    private const int DATA_SAMPLING_RATE = 700;
+    private float sampleDebt = 0f;
+
+    void Update()
     {
-        StartCoroutine(PlaybackDataRoutine());
+        if (activeSubjectId != currentlyPlayingSubjectId)
+        {
+            StartPlayback();
+        }
+    }
+
+    private void StartPlayback()
+    {
+        if (playbackCoroutine != null) StopCoroutine(playbackCoroutine);
+
+        currentlyPlayingSubjectId = activeSubjectId;
+        totalOffset = 0;
+        chunkIndex = 0;
+        currentChunk = new List<SensorData>();
+        isDataFinished = false;
+        llmUpdateTimer = 0;
+        sampleDebt = 0;
+
+        // --- RESETOWANIE LICZNIKÓW CZASU ---
+        stressTime = 0f;
+        amusementTime = 0f;
+        relaxationTime = 0f;
+        // ------------------------------------
+
+        uiController.ResetUI();
+        playbackCoroutine = StartCoroutine(PlaybackDataRoutine());
     }
 
     private IEnumerator PlaybackDataRoutine()
     {
-        while (!isS13DataFinished || !isS17DataFinished)
+        Debug.Log($"Rozpoczynam odtwarzanie dla S{currentlyPlayingSubjectId}...");
+
+        while (!isDataFinished)
         {
             if (speed <= 0f)
             {
@@ -35,50 +76,84 @@ public class PlaybackController : MonoBehaviour
                 continue;
             }
 
-            // SprawdŸ, czy czas na aktualizacjê LLM
-            bool timeForLlmUpdate = llmUpdateTimer >= llmUpdateInterval;
+            // --- NOWA LOGIKA PETLI ---
+            sampleDebt += Time.deltaTime * DATA_SAMPLING_RATE * speed;
+            int samplesToProcess = Mathf.FloorToInt(sampleDebt);
 
-            // Uczestnik 13
-            if (!isS13DataFinished)
+            if (samplesToProcess > 0)
             {
-                var dataS13 = dataManager.GetDataAtOffset(13, currentRowOffsetS13);
-                if (dataS13 != null)
+                sampleDebt -= samplesToProcess;
+
+                for (int i = 0; i < samplesToProcess; i++)
                 {
-                    uiControllerS13.UpdateUI(dataS13, currentRowOffsetS13, DATA_SAMPLING_RATE);
-                    if (timeForLlmUpdate) llmService.RequestSummary(dataS13, response => uiControllerS13.SetLlmResponse(response));
-                    currentRowOffsetS13 += DATA_SAMPLING_RATE;
-                }
-                else
-                {
-                    uiControllerS13.SetFinished();
-                    isS13DataFinished = true;
+                    // 1. SprawdŸ, czy potrzebujemy nowej paczki danych
+                    if (chunkIndex >= currentChunk.Count)
+                    {
+                        Debug.Log("Pobieram now¹ paczkê danych z bazy...");
+                        currentChunk = dataManager.GetDataChunk(currentlyPlayingSubjectId, totalOffset, chunkSizeInSeconds * DATA_SAMPLING_RATE);
+                        chunkIndex = 0; // Zresetuj indeks w paczce
+
+                        // Jeœli nowa paczka jest pusta, to koniec danych
+                        if (currentChunk.Count == 0)
+                        {
+                            isDataFinished = true;
+                            break;
+                        }
+                    }
+
+                    // 2. Pobierz dane z szybkiej listy w pamiêci RAM
+                    SensorData data = currentChunk[chunkIndex];
+
+
+                    if (totalOffset > 0 && totalOffset % DATA_SAMPLING_RATE == 0)
+                    {
+                        // Jesteœmy dok³adnie na granicy sekundy, wiêc dodajemy czas do licznika
+                        switch (data.label)
+                        {
+                            case 1: // Neutralny
+                                relaxationTime++;
+                                break;
+                            case 2: // Stres
+                                stressTime++;
+                                break;
+                            case 3: // Radoœæ
+                                amusementTime++;
+                                break;
+                            case 4: // Relaks
+                                relaxationTime++;
+                                break;
+                        }
+                    }
+
+
+                    // 3. Zaktualizuj UI (tylko w ostatnim obiegu pêtli dla wydajnoœci)
+                    if (i == samplesToProcess - 1)
+                    {
+                        // Przeka¿ aktualne liczniki czasu do UIControllera
+                        uiController.UpdateUI(data, totalOffset, DATA_SAMPLING_RATE, stressTime, amusementTime, relaxationTime);
+                    }
+
+                    // 4. Logika LLM
+                    llmUpdateTimer += (1.0f / DATA_SAMPLING_RATE);
+                    if (llmUpdateTimer >= llmUpdateInterval)
+                    {
+                        llmService.RequestSummary(data, response => uiController.SetLlmResponse(response));
+                        llmUpdateTimer = 0f;
+                    }
+
+                    chunkIndex++;
+                    totalOffset++;
                 }
             }
 
-            // Uczestnik 17
-            if (!isS17DataFinished)
+            if (isDataFinished)
             {
-                var dataS17 = dataManager.GetDataAtOffset(17, currentRowOffsetS17);
-                if (dataS17 != null)
-                {
-                    uiControllerS17.UpdateUI(dataS17, currentRowOffsetS17, DATA_SAMPLING_RATE);
-                    if (timeForLlmUpdate) llmService.RequestSummary(dataS17, response => uiControllerS17.SetLlmResponse(response));
-                    currentRowOffsetS17 += DATA_SAMPLING_RATE;
-                }
-                else
-                {
-                    uiControllerS17.SetFinished();
-                    isS17DataFinished = true;
-                }
+                uiController.SetFinished();
+                break;
             }
 
-            if (timeForLlmUpdate) llmUpdateTimer = 0f;
-
-            float waitTime = 1f / speed;
-            llmUpdateTimer += waitTime;
-            yield return new WaitForSeconds(waitTime);
+            yield return null;
         }
-
-        Debug.Log("Odtwarzanie zakoñczone dla wszystkich uczestników.");
+        Debug.Log($"Odtwarzanie zakoñczone dla S{currentlyPlayingSubjectId}.");
     }
 }

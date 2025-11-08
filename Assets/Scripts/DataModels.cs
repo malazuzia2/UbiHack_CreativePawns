@@ -36,7 +36,9 @@ public class UserInterfaceSet
     public TextMeshProUGUI EdaText;
     public TextMeshProUGUI TempText;
     public TextMeshProUGUI RespText;
+    [Header("Visuals")]
     public RectTransform breathVisual;
+    public Transform accelerometerBlock;
     [Header("LLM Output")]
     public TextMeshProUGUI LlmResponseText;
 }

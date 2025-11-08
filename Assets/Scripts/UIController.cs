@@ -5,31 +5,49 @@ public class UIController : MonoBehaviour
 {
     [SerializeField] private UserInterfaceSet uiSet;
 
+    // ... (Zmienne oddechu i akcelerometru bez zmian) ...
     [Header("Breathing Visual Settings")]
-    [Tooltip("Jak silny ma być EFEKT KOŃCOWY pulsowania oddechu.")]
-    [SerializeField] private float breathEffectMultiplier = 0.5f; // Zwiększone, bo teraz pracujemy w zakresie -1 do 1
-
-    [Tooltip("Jak 'czuła' ma być reakcja na małe zmiany oddechu. Wyższe wartości = bardziej gwałtowna reakcja na starcie.")]
-    [SerializeField] private float breathSensitivity = 0.5f; // Nowa, kluczowa zmienna!
-
-    [Tooltip("Jak płynnie obrazek ma zmieniać rozmiar.")]
+    [SerializeField] private float breathEffectMultiplier = 0.5f;
+    [SerializeField] private float breathSensitivity = 0.5f;
     [SerializeField] private float breathSmoothing = 5f;
+    [Header("Accelerometer Visual Settings")]
+    [SerializeField] private float accelerometerSmoothing = 10f;
+
+    // --- NOWA LOGIKA DŁAWIENIA AKTUALIZACJI TEKSTU ---
+    [Header("Performance Settings")]
+    [Tooltip("Jak często (w sekundach) aktualizować pola tekstowe. 0.1 = 10 razy na sekundę.")]
+    [SerializeField] private float textUpdateInterval = 0.1f;
+    private float textUpdateTimer = 0f;
+    // --------------------------------------------------
 
     private Vector3 initialBreathScale;
 
     void Awake()
     {
-        if (uiSet.breathVisual != null)
-        {
-            initialBreathScale = uiSet.breathVisual.transform.localScale;
-        }
+        if (uiSet.breathVisual != null) initialBreathScale = uiSet.breathVisual.transform.localScale;
     }
 
-
-    public void UpdateUI(SensorData data, int currentOffset, int samplingRate)
+    public void UpdateUI(SensorData data, int currentOffset, int samplingRate, float stress, float amusement, float relaxation)
     {
         if (data == null) return;
 
+        // Aktualizacje wizualne (płynne) w każdej klatce
+        UpdateBreathingVisual(data.resp);
+        UpdateAccelerometerVisual(new Vector3(data.acc_x, data.acc_y, data.acc_z));
+        UpdateStressBall(stress, amusement, relaxation);
+
+        // Aktualizacje tekstowe (dławione) co określony czas
+        textUpdateTimer += Time.deltaTime;
+        if (textUpdateTimer >= textUpdateInterval)
+        {
+            textUpdateTimer = 0f;
+            UpdateTextElements(data, currentOffset, samplingRate);
+        }
+    }
+
+    // Ta nowa funkcja zawiera tylko logikę aktualizacji tekstu
+    private void UpdateTextElements(SensorData data, int currentOffset, int samplingRate)
+    {
         float totalSeconds = (float)currentOffset / samplingRate;
         string timeString = string.Format("{0:00}:{1:00}", (int)totalSeconds / 60, (int)totalSeconds % 60);
 
@@ -44,9 +62,17 @@ public class UIController : MonoBehaviour
         uiSet.Acc_xText.text = $"ACC X: {data.acc_x:F3} g";
         uiSet.Acc_yText.text = $"ACC Y: {data.acc_y:F3} g";
         uiSet.Acc_zText.text = $"ACC Z: {data.acc_z:F3} g";
-        UpdateBreathingVisual(data.resp);
     }
 
+
+    private void UpdateStressBall(float stress, float amusement, float relaxation)
+    {
+        float all = stress + amusement + relaxation;
+        // stress = stress / all;
+        // amusement = amusement / all;
+    }
+
+    // --- NOWA, NIELINIOWA FUNKCJA WIZUALIZACJI ODDECHU ---
     private void UpdateBreathingVisual(float respValue)
     {
         if (uiSet.breathVisual == null) return;
@@ -76,6 +102,35 @@ public class UIController : MonoBehaviour
         );
     }
 
+    private void UpdateAccelerometerVisual(Vector3 acceleration)
+    {
+        if (uiSet.accelerometerBlock == null) return;
+
+        // KROK 1: Normalizujemy wektor, aby uzyskać czysty kierunek grawitacji.
+        // Jeśli wektor jest zerowy, nie robimy nic, aby uniknąć błędów.
+        if (acceleration.sqrMagnitude < 0.001f) return;
+        Vector3 gravityDirection = acceleration.normalized;
+
+        // KROK 2: Użyj Quaternion.FromToRotation.
+        // Ta instrukcja oblicza rotację potrzebną, aby obrócić wektor Vector3.down
+        // (naturalny "dół" obiektu w Unity) tak, aby wskazywał w tym samym kierunku,
+        // co nasz wektor grawitacji z czujnika.
+        Quaternion targetRotation = Quaternion.FromToRotation(Vector3.down, gravityDirection);
+
+        // KROK 3: Płynnie obracamy bloczek w kierunku nowej, pełnej rotacji 3D.
+        uiSet.accelerometerBlock.rotation = Quaternion.Slerp(
+            uiSet.accelerometerBlock.rotation,
+            targetRotation,
+            Time.deltaTime * accelerometerSmoothing
+        );
+    }
+
+    public void ResetUI()
+    {
+        uiSet.TimeText.text = "Czas: 00:00";
+        uiSet.LlmResponseText.text = "Oczekiwanie na dane...";
+        // Możesz dodać resetowanie pozostałych pól tekstowych, jeśli chcesz
+    }
     public void SetLlmResponse(string text)
     {
         uiSet.LlmResponseText.text = text;
