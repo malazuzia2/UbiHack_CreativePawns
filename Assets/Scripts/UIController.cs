@@ -71,8 +71,8 @@ public class UIController : MonoBehaviour
     {
         float all = stress + amusement + relaxation;
         if(all == 0) all = 1;
-        myMaterial.GetComponent<MeshRenderer>().material.SetFloat("StressCount", stress/all);
-        myMaterial.GetComponent<MeshRenderer>().material.SetFloat("HappyCount", amusement/all);
+        myMaterial.GetComponent<MeshRenderer>().material.SetFloat("_StressCount", stress/all);
+        myMaterial.GetComponent<MeshRenderer>().material.SetFloat("_HappyCount", amusement/all);
     }
 
     // --- NOWA, NIELINIOWA FUNKCJA WIZUALIZACJI ODDECHU ---
