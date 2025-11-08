@@ -43,6 +43,8 @@ public class UIController : MonoBehaviour
     [SerializeField] private MeshRenderer stressMaterial;
     [SerializeField] private MeshRenderer breathMaterial;
     [SerializeField] private MeshRenderer heartMaterial;
+    [SerializeField] private MeshRenderer temperatureMaterial;
+
 
     // --- NOWA LOGIKA DŁAWIENIA AKTUALIZACJI TEKSTU ---
     [SerializeField] private Renderer heartRenderer; // <<< NOWA ZMIENNA
@@ -77,6 +79,7 @@ public class UIController : MonoBehaviour
         UpdateBreathingVisual(data.resp);
         UpdateAccelerometerVisual(new Vector3(data.acc_x, data.acc_y, data.acc_z));
         UpdateStressBall(stress, amusement, relaxation);
+        UpdateTemperature(data.temp);
         currentBPM = bpm;
         // Aktualizacje tekstowe (dławione) co określony czas
         textUpdateTimer += Time.deltaTime;
@@ -106,11 +109,11 @@ public class UIController : MonoBehaviour
             uiSet.SubjectIDInputField.text = $"{data.subject_id}";
         }
         uiSet.LabelText.text = $"Etykieta: {GetLabelName(data.label)}";
-        uiSet.EcgText.text = $"EKG: {bpm} BPM";
-        uiSet.EmgText.text = $"EMG: {data.emg:F4} mV";
-        uiSet.EdaText.text = $"EDA: {data.eda:F4} μS";
+        uiSet.EcgText.text = $"EKG:\n{bpm:F2} BPM";
+        uiSet.EmgText.text = $"EMG:\n{data.emg:F4} mV";
+        uiSet.EdaText.text = $"EDA:\n{data.eda:F4} μS";
         uiSet.TempText.text = $"Temp: {data.temp:F2} °C";
-        uiSet.RespText.text = $"Oddech: {data.resp:F2} %";
+        uiSet.RespText.text = $"Oddech:\n{data.resp:F2} %";
         uiSet.Acc_xText.text = $"ACC X: {data.acc_x:F3} g";
         uiSet.Acc_yText.text = $"ACC Y: {data.acc_y:F3} g";
         uiSet.Acc_zText.text = $"ACC Z: {data.acc_z:F3} g";
@@ -120,9 +123,22 @@ public class UIController : MonoBehaviour
     private void UpdateStressBall(float stress, float amusement, float relaxation)
     {
         float all = stress + amusement + relaxation;
-        if(all == 0) all = 1;
-        stressMaterial.material.SetFloat("_StressCount", stress/all);
+        if (all == 0)
+        {
+            uiSet.RelaxText.text = $"Relax:\n{100:F2} %";
+            all = 1;
+        }
+        else
+        {
+            uiSet.RelaxText.text = $"Relax:\n{(relaxation / all) * 100:F2} %";
+
+        }
+        stressMaterial.material.SetFloat("_StressCount", stress / all);
         stressMaterial.material.SetFloat("_HappyCount", amusement/all);
+        uiSet.StressText.text = $"Stress:\n{(stress/all)*100:F2} %";
+        uiSet.HappyText.text = $"Amusement:\n{(amusement/all)*100:F2} %";
+
+
     }
 
     private void UpdateHeartVisual()
@@ -209,6 +225,11 @@ public class UIController : MonoBehaviour
             targetRotation,
             Time.deltaTime * accelerometerSmoothing
         );
+    }
+
+    private void UpdateTemperature(float tempValue)
+    {
+        temperatureMaterial.material.SetFloat("_stopnie", tempValue);
     }
 
     public void ResetUI()

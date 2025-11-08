@@ -35,6 +35,9 @@ public class UserInterfaceSet
     public TextMeshProUGUI EdaText;
     public TextMeshProUGUI TempText;
     public TextMeshProUGUI RespText;
+    public TextMeshProUGUI StressText;
+    public TextMeshProUGUI RelaxText;
+    public TextMeshProUGUI HappyText;
     [Header("Visuals")]
     public RectTransform breathVisual;
     public Transform accelerometerBlock;

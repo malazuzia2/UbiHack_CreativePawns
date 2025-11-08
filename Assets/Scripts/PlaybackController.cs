@@ -38,7 +38,7 @@ public class PlaybackController : MonoBehaviour
 
     public float stressTime = 0f;
     public float amusementTime = 0f;
-    public float relaxationTime = 0f;
+    public float relaxationTime = 1f;
 
     private int totalOffset = 0;
     private bool isDataFinished = false;
