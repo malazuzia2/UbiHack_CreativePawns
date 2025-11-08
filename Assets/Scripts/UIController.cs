@@ -20,6 +20,7 @@ public class UIController : MonoBehaviour
     private float textUpdateTimer = 0f;
     // --------------------------------------------------
 
+    public GameObject myMaterial;
     private Vector3 initialBreathScale;
 
     void Awake()
@@ -31,6 +32,7 @@ public class UIController : MonoBehaviour
     {
         if (data == null) return;
 
+        
         // Aktualizacje wizualne (płynne) w każdej klatce
         UpdateBreathingVisual(data.resp);
         UpdateAccelerometerVisual(new Vector3(data.acc_x, data.acc_y, data.acc_z));
@@ -68,8 +70,9 @@ public class UIController : MonoBehaviour
     private void UpdateStressBall(float stress, float amusement, float relaxation)
     {
         float all = stress + amusement + relaxation;
-        // stress = stress / all;
-        // amusement = amusement / all;
+        myMaterial.GetComponent<MeshRenderer>().material.SetFloat("StressCount", stress/all);
+        Debug.Log("Stress: " + stress/all);
+        myMaterial.GetComponent<MeshRenderer>().material.SetFloat("HappyCount", amusement/all);
     }
 
     // --- NOWA, NIELINIOWA FUNKCJA WIZUALIZACJI ODDECHU ---
