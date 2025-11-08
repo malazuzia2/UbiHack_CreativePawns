@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: New Material
+  m_Name: EmotionMaterial
   m_Shader: {fileID: -6465566751694194690, guid: 805243681660f6347b43723cb93b8c5d, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -68,11 +68,11 @@ Material:
     m_Ints: []
     m_Floats:
     - _EnableExternalAlpha: 0
-    - _HappyCount: 0
+    - _HappyCount: 0.12669984
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RelaxCount: 0
-    - _StressCount: 0
+    - _StressCount: 0.22023217
     - _ZWrite: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
