@@ -5,16 +5,15 @@ public class UIController : MonoBehaviour
 {
     [SerializeField] private UserInterfaceSet uiSet;
 
-    // ... (Zmienne oddechu i akcelerometru bez zmian) ...
     [Header("Breathing Visual Settings")]
     [Tooltip("Obiekt (np. Sfera), którego materiałem będziemy sterować.")]
     [SerializeField] private Renderer breathVisualRenderer;
 
     [Tooltip("Minimalna wartość oddechu (pełny wydech), która zostanie zmapowana na 0.")]
-    [SerializeField] private float minBreathValue = -4f; // Możesz dostosować te wartości
+    [SerializeField] private float minBreathValue = -4f; 
 
     [Tooltip("Maksymalna wartość oddechu (pełny wdech), która zostanie zmapowana na 1.")]
-    [SerializeField] private float maxBreathValue = 4f; // na podstawie obserwacji danych
+    [SerializeField] private float maxBreathValue = 4f; 
 
     [Tooltip("Jak płynnie materiał ma reagować na zmiany oddechu.")]
     [SerializeField] private float breathSmoothing = 5f;
@@ -29,7 +28,7 @@ public class UIController : MonoBehaviour
     [Space]
     [SerializeField] private Color calmColor = new Color(0.08235296f, 0.227953f, 0.8039216f);
     [SerializeField] private Color alertColor = new Color(0f, 1f, 0.6946125f);
-    [SerializeField] private Color highColor = new Color(1f, 0f, 0.3369489f); // Orange #FF0056
+    [SerializeField] private Color highColor = new Color(1f, 0f, 0.3369489f); 
     [SerializeField] private Color veryHighColor = Color.red;
     [Space]
     [Tooltip("Jak płynnie serce ma zmieniać kolor.")]
@@ -46,18 +45,16 @@ public class UIController : MonoBehaviour
     [SerializeField] private MeshRenderer temperatureMaterial;
 
 
-    // --- NOWA LOGIKA DŁAWIENIA AKTUALIZACJI TEKSTU ---
-    [SerializeField] private Renderer heartRenderer; // <<< NOWA ZMIENNA
+    [SerializeField] private Renderer heartRenderer; 
     private float currentBPM = 0f;
     private Material _heartMaterialInstance;
     private static readonly int DarknessID = Shader.PropertyToID("_Darkness");
-    private static readonly int ColorHeartID = Shader.PropertyToID("_ColorHeart"); // <<< NOWA ZMIENNA
+    private static readonly int ColorHeartID = Shader.PropertyToID("_ColorHeart"); 
 
     [Header("Performance Settings")]
     [Tooltip("Jak często (w sekundach) aktualizować pola tekstowe. 0.1 = 10 razy na sekundę.")]
     [SerializeField] private float textUpdateInterval = 0.1f;
     private float textUpdateTimer = 0f;
-    // --------------------------------------------------
 
     private Vector3 initialBreathScale;
 
@@ -75,13 +72,11 @@ public class UIController : MonoBehaviour
         if (data == null) return;
 
         
-        // Aktualizacje wizualne (płynne) w każdej klatce
         UpdateBreathingVisual(data.resp);
         UpdateAccelerometerVisual(new Vector3(data.acc_x, data.acc_y, data.acc_z));
         UpdateStressBall(stress, amusement, relaxation);
         UpdateTemperature(data.temp);
         currentBPM = bpm;
-        // Aktualizacje tekstowe (dławione) co określony czas
         textUpdateTimer += Time.deltaTime;
         if (textUpdateTimer >= textUpdateInterval)
         {
@@ -94,7 +89,6 @@ public class UIController : MonoBehaviour
         UpdateHeartVisual();
     }
 
-    // Ta nowa funkcja zawiera tylko logikę aktualizacji tekstu
     private void UpdateTextElements(SensorData data, int currentOffset, int samplingRate, float bpm)
     {
         float totalSeconds = (float)currentOffset / samplingRate;
@@ -145,7 +139,6 @@ public class UIController : MonoBehaviour
     {
         if (_heartMaterialInstance == null) return;
 
-        // --- Część 1: Pulsowanie (bez zmian) ---
         if (currentBPM > 0)
         {
             float frequency = currentBPM / 60.0f;
@@ -153,53 +146,40 @@ public class UIController : MonoBehaviour
             float targetDarkness = ((sinValue + 1.0f) / 2.0f) * 3.0f;
             _heartMaterialInstance.SetFloat(DarknessID, targetDarkness);
         }
-
-        // --- Część 2: Zmiana Koloru (NOWA LOGIKA) ---
-
-        // KROK 1: Wybierz docelowy kolor na podstawie aktualnego BPM
         Color targetColor;
         if (currentBPM < calmBpmThreshold)
         {
-            targetColor = calmColor; // Stage 1: Spokój
+            targetColor = calmColor; 
         }
         else if (currentBPM < alertBpmThreshold)
         {
-            targetColor = alertColor; // Stage 2: Lekkie pobudzenie
+            targetColor = alertColor; 
         }
         else if (currentBPM < highBpmThreshold)
         {
-            targetColor = highColor; // Stage 3: Wysokie tętno
+            targetColor = highColor; 
         }
         else
         {
-            targetColor = veryHighColor; // Stage 4: Bardzo wysokie tętno
+            targetColor = veryHighColor; 
         }
 
-        // KROK 2: Płynnie zmieniaj obecny kolor w kierunku docelowego
         Color currentColor = _heartMaterialInstance.GetColor(ColorHeartID);
         Color smoothedColor = Color.Lerp(currentColor, targetColor, Time.deltaTime * colorSmoothing);
 
-        // KROK 3: Ustaw nowy, płynny kolor w shaderze
         _heartMaterialInstance.SetColor(ColorHeartID, smoothedColor);
     }
 
 
     private void UpdateBreathingVisual(float respValue)
     {
-
-        // KROK 1: Zmapuj wartość oddechu z zakresu [min, max] do zakresu [0, 1].
-        // Funkcja InverseLerp robi to za nas. Mathf.Clamp zapewnia, że surowa wartość
-        // nie wyjdzie poza zdefiniowany przez nas zakres.
         float clampedResp = Mathf.Clamp(respValue, minBreathValue, maxBreathValue);
         float targetPulse = Mathf.InverseLerp(minBreathValue, maxBreathValue, clampedResp);
 
-        // KROK 2: Odczytaj obecną wartość pulsowania z materiału.
         float currentPulse = breathMaterial.material.GetFloat("_pulsing");
 
-        // KROK 3: Płynnie interpoluj w kierunku nowej wartości.
         float smoothedPulse = Mathf.Lerp(currentPulse, targetPulse, Time.deltaTime * breathSmoothing);
 
-        // KROK 4: Ustaw nową, płynną wartość w shaderze.
         breathMaterial.material.SetFloat("_pulsing", smoothedPulse);
     }
 
@@ -208,18 +188,11 @@ public class UIController : MonoBehaviour
     {
         if (uiSet.accelerometerBlock == null) return;
 
-        // KROK 1: Normalizujemy wektor, aby uzyskać czysty kierunek grawitacji.
-        // Jeśli wektor jest zerowy, nie robimy nic, aby uniknąć błędów.
         if (acceleration.sqrMagnitude < 0.001f) return;
         Vector3 gravityDirection = acceleration.normalized;
 
-        // KROK 2: Użyj Quaternion.FromToRotation.
-        // Ta instrukcja oblicza rotację potrzebną, aby obrócić wektor Vector3.down
-        // (naturalny "dół" obiektu w Unity) tak, aby wskazywał w tym samym kierunku,
-        // co nasz wektor grawitacji z czujnika.
         Quaternion targetRotation = Quaternion.FromToRotation(Vector3.down, gravityDirection);
 
-        // KROK 3: Płynnie obracamy bloczek w kierunku nowej, pełnej rotacji 3D.
         uiSet.accelerometerBlock.rotation = Quaternion.Slerp(
             uiSet.accelerometerBlock.rotation,
             targetRotation,
@@ -236,8 +209,6 @@ public class UIController : MonoBehaviour
     {
         if (uiSet.TimeInputField != null) uiSet.TimeInputField.text = "0";
         uiSet.LlmResponseText.text = "Oczekiwanie na dane...";
-        //if (uiSet.SubjectIDInputField != null) uiSet.SubjectIDInputField.text = GetComponentInParent<PlaybackController>().activeSubjectId.ToString();
-        // Możesz dodać resetowanie pozostałych pól tekstowych, jeśli chcesz
     }
     public void SetLlmResponse(string text)
     {

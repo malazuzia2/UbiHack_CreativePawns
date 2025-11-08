@@ -1,10 +1,8 @@
 using TMPro;
 
-// U¿ywamy przestrzeni nazw z biblioteki do³¹czonej do Visual Scripting
 using UnityEngine;
 using UnityEngine.UI;
 using SQLite4Unity3d;
-// Klasa-mapa dla tabeli w bazie danych
 [Table("sensor_data")]
 public class SensorData
 {
@@ -20,7 +18,6 @@ public class SensorData
     public float acc_z { get; set; }
 }
 
-// Kontener na wszystkie elementy UI dla jednego u¿ytkownika.
 [System.Serializable]
 public class UserInterfaceSet
 {
@@ -45,7 +42,6 @@ public class UserInterfaceSet
     public TextMeshProUGUI LlmResponseText;
 }
 
-// Klasy pomocnicze do komunikacji z API OpenAI
 [System.Serializable]
 public class ApiMessage { public string role; public string content; }
 [System.Serializable]

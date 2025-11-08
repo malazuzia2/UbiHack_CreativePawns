@@ -6,25 +6,24 @@ using System.Linq;
 
 public class PlaybackController : MonoBehaviour
 {
-    [Header("Zale¿noœci")]
+    [Header("Zaleï¿½noï¿½ci")]
     [SerializeField] private DataManager dataManager;
     [SerializeField] private LLMService llmService;
     [SerializeField] private UIController uiController;
     [SerializeField] private GameObject info;
 
     [Header("Sliding Window Statistics")]
-    [Tooltip("D³ugoœæ okna czasowego (w sekundach), z którego liczone s¹ statystyki.")]
-    [SerializeField] private int statsWindowInSeconds = 1200; // 1200 sekund = 20 minut
-    private Queue<int> labelHistory = new Queue<int>(); // Kolejka przechowuj¹ca etykiety z ostatniego okna
-    private int[] labelCounts = new int[8]; // Tablica do zliczania wyst¹pieñ ka¿dej etykiety (0-7)
+    [Tooltip("Dï¿½ugoï¿½ï¿½ okna czasowego (w sekundach), z ktï¿½rego liczone sï¿½ statystyki.")]
+    [SerializeField] private int statsWindowInSeconds = 1200; 
+    private Queue<int> labelHistory = new Queue<int>(); 
+    private int[] labelCounts = new int[8]; 
 
     [Header("Ustawienia Odtwarzania")]
     public int activeSubjectId = 13;
     [Range(0f, 100f)] public float speed = 1f;
-    [SerializeField] private int timeJumpInSeconds = 15; // O ile sekund przeskakiwaæ
+    [SerializeField] private int timeJumpInSeconds = 15; 
 
-    // ... (wszystkie inne zmienne: chunk, bpm, liczniki czasu, itd. bez zmian) ...
-    [Header("Ustawienia Wydajnoœci")]
+    [Header("Ustawienia Wydajnoï¿½ci")]
     [SerializeField] private int chunkSizeInSeconds = 5;
     private List<SensorData> currentChunk;
     private int chunkIndex = 0;
@@ -47,7 +46,7 @@ public class PlaybackController : MonoBehaviour
     private int currentlyPlayingSubjectId = -1;
     private const int DATA_SAMPLING_RATE = 700;
     private float sampleDebt = 0f;
-    private bool isSeeking = false; // Flaga, aby zatrzymaæ odtwarzanie podczas przeskoku
+    private bool isSeeking = false;
 
     void Update()
     {
@@ -59,10 +58,9 @@ public class PlaybackController : MonoBehaviour
 
     private void StartPlayback()
     {
-        SeekTo(0); // U¿yj nowej funkcji SeekTo do startowania/resetowania
+        SeekTo(0);
     }
 
-    // --- NOWE PUBLICZNE FUNKCJE DLA PRZYCISKÓW ---
     public void Rewind()
     {
         int newOffset = Mathf.Max(0, totalOffset - (timeJumpInSeconds * DATA_SAMPLING_RATE));
@@ -71,7 +69,6 @@ public class PlaybackController : MonoBehaviour
 
     public void Forward()
     {
-        // Tutaj musimy dodaæ logikê, aby nie przeskoczyæ za daleko, ale na razie uproœæmy
         int newOffset = totalOffset + (timeJumpInSeconds * DATA_SAMPLING_RATE);
         SeekTo(newOffset);
     }
@@ -98,46 +95,37 @@ public class PlaybackController : MonoBehaviour
 
     public void OnTimeChanged(string timeString)
     {
-        // Próbujemy przekonwertowaæ wpisany tekst na liczbê (sekundy)
         if (int.TryParse(timeString, out int timeInSeconds))
         {
-            // Przeliczamy sekundy na offset w próbkach
             int newOffset = timeInSeconds * DATA_SAMPLING_RATE;
             SeekTo(newOffset);
         }
         else
         {
-            Debug.LogWarning("Wprowadzono nieprawid³owy format czasu.");
+            Debug.LogWarning("Wprowadzono nieprawidï¿½owy format czasu.");
         }
     }
     public void OnSubjectIdChanged(string idString)
     {
         if (int.TryParse(idString, out int newId))
         {
-            // Po prostu zaktualizuj publiczn¹ zmienn¹.
-            // Pêtla Update() w nastêpnej klatce wykryje tê zmianê i
-            // automatycznie wywo³a StartPlayback(), który zresetuje czas.
             activeSubjectId = newId;
         }
         else
         {
-            Debug.LogWarning("Wprowadzono nieprawid³owy format ID uczestnika.");
+            Debug.LogWarning("Wprowadzono nieprawidï¿½owy format ID uczestnika.");
         }
     }
 
-    // ---------------------------------------------
-
-    // --- G£ÓWNA NOWA FUNKCJA DO ZARZ¥DZANIA CZASEM ---
     private void SeekTo(int newOffset)
     {
-        if (isSeeking) return; // Zapobiegaj wielokrotnym skokom
+        if (isSeeking) return; 
         isSeeking = true;
 
         if (playbackCoroutine != null) StopCoroutine(playbackCoroutine);
 
-        Debug.Log($"Przeskakujê do próbki: {newOffset}...");
+        Debug.Log($"Przeskakujï¿½ do prï¿½bki: {newOffset}...");
 
-        // Zresetuj stan odtwarzania
         currentlyPlayingSubjectId = activeSubjectId;
         totalOffset = newOffset;
         chunkIndex = 0;
@@ -154,9 +142,8 @@ public class PlaybackController : MonoBehaviour
         int historyStartOffset = Mathf.Max(0, newOffset - (statsWindowInSeconds * DATA_SAMPLING_RATE));
         int historySize = newOffset - historyStartOffset;
 
-        Debug.Log($"Rekonstruujê statystyki z {historySize} próbek...");
+        Debug.Log($"Rekonstruujï¿½ statystyki z {historySize} prï¿½bek...");
 
-        // U¿yj nowej, super szybkiej funkcji, aby pobraæ TYLKO etykiety
         List<int> labelHistoryChunk = dataManager.GetLabelHistoryChunk(currentlyPlayingSubjectId, historyStartOffset, historySize);
 
         foreach (var label in labelHistoryChunk)
@@ -165,8 +152,7 @@ public class PlaybackController : MonoBehaviour
             labelCounts[label]++;
         }
 
-        Debug.Log("Rekonstrukcja statystyk zakoñczona.");
-        // --------------------------------------------------------
+        Debug.Log("Rekonstrukcja statystyk zakoï¿½czona.");
 
         uiController.ResetUI();
         playbackCoroutine = StartCoroutine(PlaybackDataRoutine());
@@ -178,13 +164,13 @@ public class PlaybackController : MonoBehaviour
     {
         if (_lastDataSample != null && llmService != null)
         {
-            Debug.Log("Wysy³am zapytanie do LLM na ¿¹danie...");
+            Debug.Log("Wysyï¿½am zapytanie do LLM na ï¿½ï¿½danie...");
             llmService.RequestSummary(_lastDataSample, response => uiController.SetLlmResponse(response));
         }
         else
         {
             Debug.LogWarning("Brak danych do analizy lub brak serwisu LLM.");
-            uiController.SetLlmResponse("Dane nie s¹ jeszcze gotowe do analizy.");
+            uiController.SetLlmResponse("Dane nie sï¿½ jeszcze gotowe do analizy.");
         }
     }
 
@@ -216,22 +202,17 @@ public class PlaybackController : MonoBehaviour
 
                     CalculateBPM(data.ecg, totalOffset);
 
-                    // --- NOWA LOGIKA AKTUALIZACJI STATYSTYK ---
-                    // 1. Dodaj now¹ etykietê do historii
                     labelHistory.Enqueue(data.label);
                     labelCounts[data.label]++;
 
-                    // 2. Jeœli historia jest za d³uga, usuñ najstarsz¹ etykietê
                     if (labelHistory.Count > statsWindowInSeconds * DATA_SAMPLING_RATE)
                     {
                         int oldestLabel = labelHistory.Dequeue();
                         labelCounts[oldestLabel]--;
                     }
-                    // ------------------------------------------
 
                     if (i == samplesToProcess - 1)
                     {
-                        // Przelicz zliczenia na sekundy i przeka¿ do UI
                         float stress = (float)labelCounts[2] / DATA_SAMPLING_RATE;
                         float amusement = (float)labelCounts[3] / DATA_SAMPLING_RATE;
                         float relaxation = (float)labelCounts[4] / DATA_SAMPLING_RATE;
@@ -249,31 +230,24 @@ public class PlaybackController : MonoBehaviour
 
             yield return null;
         }
-        Debug.Log($"Odtwarzanie zakoñczone dla S{currentlyPlayingSubjectId}.");
+        Debug.Log($"Odtwarzanie zakoï¿½czone dla S{currentlyPlayingSubjectId}.");
     }
     private void CalculateBPM(float ecgValue, int currentSampleIndex)
     {
-        // Sprawdzamy, czy sygna³ w³aœnie przekroczy³ próg (id¹c w górê)
         if (ecgValue > bpmDetectionThreshold && !isAboveThreshold)
         {
-            isAboveThreshold = true; // Zaznacz, ¿e jesteœmy "w piku"
-
-            // Oblicz aktualny czas w sekundach
+            isAboveThreshold = true; 
             float currentTime = (float)currentSampleIndex / DATA_SAMPLING_RATE;
 
-            // Dodaj czas uderzenia do listy
             beatTimestamps.Add(currentTime);
 
-            // Utrzymuj listê w rozs¹dnym rozmiarze
             if (beatTimestamps.Count > bpmAverageCount)
             {
                 beatTimestamps.RemoveAt(0);
             }
 
-            // Oblicz BPM, jeœli mamy co najmniej 2 uderzenia
             if (beatTimestamps.Count > 1)
             {
-                // Oblicz œredni czas miêdzy uderzeniami na liœcie
                 List<float> intervals = new List<float>();
                 for (int i = 1; i < beatTimestamps.Count; i++)
                 {
@@ -281,17 +255,15 @@ public class PlaybackController : MonoBehaviour
                 }
                 float averageInterval = intervals.Average();
 
-                // Przelicz na uderzenia na minutê
                 if (averageInterval > 0)
                 {
                     currentBPM = 60f / averageInterval;
                 }
             }
         }
-        // Sprawdzamy, czy sygna³ opad³ z powrotem poni¿ej progu
         else if (ecgValue < bpmDetectionThreshold && isAboveThreshold)
         {
-            isAboveThreshold = false; // Zresetuj flagê, gotowi na nastêpny pik
+            isAboveThreshold = false;
         }
     }
 }

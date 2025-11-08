@@ -8,26 +8,21 @@ public class LLMService : MonoBehaviour
     [SerializeField] private string openAI_API_Key;
     private const string OPENAI_API_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-    // --- NOWA LOGIKA: Pamiętamy poprzedni stan, aby wykrywać trendy ---
     private SensorData _previousDataSample;
-    // -----------------------------------------------------------------
 
     public void RequestSummary(SensorData currentData, Action<string> onComplete)
     {
         string prompt;
 
-        // Jeśli to pierwsze zapytanie, użyj prostego promptu
         if (_previousDataSample == null)
         {
             prompt = CreateInitialPrompt(currentData);
         }
-        // Jeśli mamy poprzednie dane, stwórz prompt porównawczy
         else
         {
             prompt = CreateTrendPrompt(currentData, _previousDataSample);
         }
 
-        // Zapamiętaj obecne dane jako "poprzednie" dla następnego zapytania
         _previousDataSample = currentData;
 
         StartCoroutine(GetLlmResponse(prompt, onComplete));
@@ -51,7 +46,6 @@ public class LLMService : MonoBehaviour
         string edaTrend;
         float edaChange = current.eda - previous.eda;
 
-        // Określ trend dla EDA (najważniejszy wskaźnik stresu)
         if (Mathf.Abs(edaChange) < 0.1) edaTrend = "jest stabilna";
         else if (edaChange > 0) edaTrend = "wzrasta, co może wskazywać na rosnące pobudzenie";
         else edaTrend = "spada, co sugeruje uspokojenie";
@@ -72,7 +66,6 @@ public class LLMService : MonoBehaviour
 
         using (UnityWebRequest request = new UnityWebRequest(OPENAI_API_ENDPOINT, "POST"))
         {
-            // ... (reszta kodu zapytania bez zmian) ...
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
