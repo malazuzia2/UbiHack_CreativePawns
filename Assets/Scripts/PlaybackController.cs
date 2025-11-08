@@ -10,6 +10,8 @@ public class PlaybackController : MonoBehaviour
     [SerializeField] private DataManager dataManager;
     [SerializeField] private LLMService llmService;
     [SerializeField] private UIController uiController;
+    [SerializeField] private GameObject info;
+
     // ... (reszta zale¿noœci)
 
     [Header("Ustawienia Odtwarzania")]
@@ -73,6 +75,21 @@ public class PlaybackController : MonoBehaviour
     public void ResetTime()
     {
         SeekTo(0);
+    }
+
+    public void StopTime()
+    {
+        speed = 0f;
+    }
+
+    public void PlayTime()
+    {
+        speed = 1f;
+    }
+
+    public void ShowInfo()
+    {
+        info.SetActive(!info.activeSelf);
     }
 
     public void OnTimeChanged(string timeString)
