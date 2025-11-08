@@ -89,7 +89,20 @@ public class PlaybackController : MonoBehaviour
             Debug.LogWarning("Wprowadzono nieprawid³owy format czasu.");
         }
     }
-
+    public void OnSubjectIdChanged(string idString)
+    {
+        if (int.TryParse(idString, out int newId))
+        {
+            // Po prostu zaktualizuj publiczn¹ zmienn¹.
+            // Pêtla Update() w nastêpnej klatce wykryje tê zmianê i
+            // automatycznie wywo³a StartPlayback(), który zresetuje czas.
+            activeSubjectId = newId;
+        }
+        else
+        {
+            Debug.LogWarning("Wprowadzono nieprawid³owy format ID uczestnika.");
+        }
+    }
 
     // ---------------------------------------------
 

@@ -25,8 +25,8 @@ public class SensorData
 [System.Serializable]
 public class UserInterfaceSet
 {
-    public TMP_InputField TimeInputField; 
-    public TextMeshProUGUI SubjectID;
+    public TMP_InputField TimeInputField;
+    public TMP_InputField SubjectIDInputField; 
     public TextMeshProUGUI LabelText;
     public TextMeshProUGUI Acc_xText;
     public TextMeshProUGUI Acc_yText;

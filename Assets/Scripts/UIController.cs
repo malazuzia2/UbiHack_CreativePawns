@@ -83,7 +83,10 @@ public class UIController : MonoBehaviour
         {
             uiSet.TimeInputField.text = $"{(int)totalSeconds}";
         }
-        uiSet.SubjectID.text = $"{data.subject_id}";
+        if (!uiSet.SubjectIDInputField.isFocused)
+        {
+            uiSet.SubjectIDInputField.text = $"{data.subject_id}";
+        }
         uiSet.LabelText.text = $"Etykieta: {GetLabelName(data.label)}";
         uiSet.EcgText.text = $"EKG: {bpm} BPM";
         uiSet.EmgText.text = $"EMG: {data.emg:F4} mV";
@@ -174,6 +177,7 @@ public class UIController : MonoBehaviour
     {
         if (uiSet.TimeInputField != null) uiSet.TimeInputField.text = "0";
         uiSet.LlmResponseText.text = "Oczekiwanie na dane...";
+        //if (uiSet.SubjectIDInputField != null) uiSet.SubjectIDInputField.text = GetComponentInParent<PlaybackController>().activeSubjectId.ToString();
         // Możesz dodać resetowanie pozostałych pól tekstowych, jeśli chcesz
     }
     public void SetLlmResponse(string text)
